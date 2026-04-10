@@ -165,6 +165,14 @@
     }
     shuffle(IMAGES);
 
+    // 15번 사진을 가장 위(맨 앞)에 고정
+    const frontPhoto = 'assets_web/youn_photo_15.jpg';
+    const frontIdx = IMAGES.indexOf(frontPhoto);
+    if (frontIdx > -1) {
+      IMAGES.splice(frontIdx, 1);
+      IMAGES.push(frontPhoto);
+    }
+
     function mulberry32(seed) {
       return function () {
         seed |= 0; seed = seed + 0x6D2B79F5 | 0;
