@@ -156,6 +156,15 @@
       `assets_web/youn_photo_${String(i + 1).padStart(2, '0')}.jpg`
     );
 
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    shuffle(IMAGES);
+
     function mulberry32(seed) {
       return function () {
         seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -164,7 +173,7 @@
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     }
-    const rand = mulberry32(42);
+    const rand = mulberry32(Date.now()); // 시드를 현재 시간으로 변경하여 매번 다른 레이아웃 유도
     const layout = IMAGES.map(() => ({ ratio: rand() }));
 
     const container = document.getElementById('stack');
