@@ -65,6 +65,8 @@
       z-index: 1000;
       background: #fffffd;
       display: flex;
+      flex-direction: column;
+      gap: 10px;
       align-items: center;
       justify-content: center;
       transition: opacity 0.7s ease;
@@ -81,6 +83,12 @@
       font-weight: 400;
       letter-spacing: 0.1em;
       color: #111;
+    }
+
+    #loading .loading-text {
+      font-size: clamp(8px, 1vw, 12px);
+      color: rgb(241,165,250);
+      letter-spacing: 0.05em;
     }
 
     /* 큐브는 JS가 개별 position:fixed로 관리 */
@@ -130,7 +138,10 @@
 </head>
 <body>
 
-  <div id="loading"><span>youn youngik</span></div>
+  <div id="loading">
+    <span>youn youngik</span>
+    <span class="loading-text">loading...</span>
+  </div>
 
   <header>
     <h1>Youn Youngik – Seoul</h1>
@@ -475,6 +486,33 @@
       });
     }
 
+    function showMusicOff() {
+      const msg = document.createElement('div');
+      msg.textContent = 'music off';
+      msg.style.cssText = `
+        position: fixed;
+        left: 2.4vw;
+        bottom: 2.4vw;
+        font-family: 'Fira Mono', monospace;
+        font-size: clamp(8px, 0.65vw, 11px);
+        color: #111;
+        letter-spacing: 0.04em;
+        z-index: 100;
+        opacity: 0;
+        transition: opacity 0.8s ease;
+        pointer-events: none;
+      `;
+      document.body.appendChild(msg);
+      
+      requestAnimationFrame(() => {
+        msg.style.opacity = '1';
+        setTimeout(() => {
+          msg.style.opacity = '0';
+          setTimeout(() => msg.remove(), 1000);
+        }, 2200);
+      });
+    }
+
     function dashToWall(cube) {
       if (cube.dashing) return;
       cube.dashing = true;
@@ -516,6 +554,11 @@
             el.remove();
             const idx = cubeState.indexOf(cube);
             if (idx !== -1) cubeState.splice(idx, 1);
+            
+            // 모든 큐브가 사라졌을 때 메시지 출력
+            if (cubeState.length === 0) {
+              showMusicOff();
+            }
           }, 450);
         }
       };
