@@ -209,12 +209,17 @@
           if (w * ar > availH) w = availH / ar;
         }
       } else {
+        const screenAR = window.innerWidth / window.innerHeight;
+        const isUltraWide = screenAR >= 2.0;
+
         if (isLandscape) {
-          const maxW = window.innerWidth * 0.72;
+          const mod = isUltraWide ? 0.7 : 1.0;
+          const maxW = window.innerWidth * 0.72 * mod;
           const minW = maxW * 0.56;
           w = minW + ratio * (maxW - minW);
         } else {
-          const maxH = window.innerHeight * 0.9;
+          const mod = isUltraWide ? 0.82 : 1.0;
+          const maxH = window.innerHeight * 0.9 * mod;
           const minH = maxH * 0.78;
           const h = minH + ratio * (maxH - minH);
           w = h / ar;
