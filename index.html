@@ -457,11 +457,9 @@
       const containerGrams = document.querySelector('.color-dots');
       for (let i = 0; i < 30; i++) {
         const span = document.createElement('span');
-        // 랜덤 색상 (샘플링)
-        const r = Math.floor(Math.random() * 256);
-        const g = Math.floor(Math.random() * 256);
-        const b = Math.floor(Math.random() * 256);
-        span.style.background = `rgb(${r},${g},${b})`;
+        // 처음에 지정한 5가지 색상 중에서 랜덤 선택
+        const color = CUBE_COLORS[Math.floor(Math.random() * CUBE_COLORS.length)];
+        span.style.background = color;
         containerGrams.appendChild(span);
       }
       // 새 큐브들을 포함하여 초기화
