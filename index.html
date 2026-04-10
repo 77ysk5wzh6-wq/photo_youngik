@@ -152,11 +152,11 @@
   </header>
 
   <div class="color-dots">
-    <span style="background:rgb(134,100,213)"></span>
-    <span style="background:rgb(218,254,99)"></span>
-    <span style="background:rgb(241,165,250)"></span>
-    <span style="background:rgb(230,52,35)"></span>
-    <span style="background:rgb(0,0,0)"></span>
+    <span class="orig" style="background:rgb(134,100,213)"></span>
+    <span class="orig" style="background:rgb(218,254,99)"></span>
+    <span class="orig" style="background:rgb(241,165,250)"></span>
+    <span class="orig" style="background:rgb(230,52,35)"></span>
+    <span class="orig" style="background:rgb(0,0,0)"></span>
   </div>
 
   <div class="stack" id="stack"></div>
@@ -448,12 +448,34 @@
     }
 
     let cubeState = [];
+    let isEasterEggActive = false;
+
+    function activateEasterEgg() {
+      if (isEasterEggActive) return;
+      isEasterEggActive = true;
+      
+      const containerGrams = document.querySelector('.color-dots');
+      for (let i = 0; i < 30; i++) {
+        const span = document.createElement('span');
+        // 랜덤 색상 (샘플링)
+        const r = Math.floor(Math.random() * 256);
+        const g = Math.floor(Math.random() * 256);
+        const b = Math.floor(Math.random() * 256);
+        span.style.background = `rgb(${r},${g},${b})`;
+        containerGrams.appendChild(span);
+      }
+      // 새 큐브들을 포함하여 초기화
+      initCubes();
+    }
 
     function initCubes() {
       const size   = getCubeSize();
       const isMobile = window.innerWidth <= 600;
       const headerH  = document.querySelector('header').offsetHeight;
       const spans    = Array.from(document.querySelectorAll('.color-dots span'));
+
+      const maxCol   = Math.floor(window.innerWidth  / size) - 1;
+      const maxRow   = Math.floor(window.innerHeight / size) - 1;
 
       let startCols, startRow;
 
@@ -471,50 +493,28 @@
       }
 
       cubeState = spans.map((el, i) => {
-        const col = startCols[i];
-        const row = startRow;
+        let col, row;
+        if (el.classList.contains('orig')) {
+          col = startCols[i] || Math.floor(Math.random() * maxCol);
+          row = startRow;
+        } else {
+          // 이스터에그 큐브들은 랜덤 위치
+          col = Math.floor(Math.random() * (maxCol + 1));
+          row = Math.floor(Math.random() * (maxRow + 1));
+        }
+
         el.style.width  = size + 'px';
         el.style.height = size + 'px';
         el.style.left   = col * size + 'px';
         el.style.bottom = row * size + 'px';
         
-        const cubeObj = { col, row, el, dashing: false };
+        // 색상 추출 (비교용)
+        const color = el.style.background.replace(/\s/g, ''); 
+        const cubeObj = { col, row, el, dashing: false, color };
         
         el.onclick = () => dashToWall(cubeObj);
         
         return cubeObj;
-      });
-    }
-
-    function showMusicOff() {
-      const isMobile = window.innerWidth <= 600;
-      const msg = document.createElement('div');
-      msg.textContent = 'music off';
-      
-      const pos = isMobile 
-        ? 'right: 5vw; top: calc(4vw + 20px); text-align: right;'
-        : 'left: 2.4vw; bottom: 2.4vw;';
-
-      msg.style.cssText = `
-        position: fixed;
-        ${pos}
-        font-family: 'Fira Mono', monospace;
-        font-size: clamp(8px, 0.65vw, 11px);
-        color: #111;
-        letter-spacing: 0.04em;
-        z-index: 100;
-        opacity: 0;
-        transition: opacity 0.8s ease;
-        pointer-events: none;
-      `;
-      document.body.appendChild(msg);
-      
-      requestAnimationFrame(() => {
-        msg.style.opacity = '1';
-        setTimeout(() => {
-          msg.style.opacity = '0';
-          setTimeout(() => msg.remove(), 1000);
-        }, 2200);
       });
     }
 
@@ -524,9 +524,9 @@
       cube.animating = false; // 진행 중인 회전 상태 수동 해제
       playTypewriter();
 
-      // 모든 큐브가 클릭된 상태(돌진 예정)인지 즉시 확인
+      // 모든 큐브가 클릭된 상태(돌진 예정)인지 확인 (이스터에그 발동)
       if (cubeState.every(c => c.dashing)) {
-        showMusicOff();
+        activateEasterEgg();
       }
 
       const el = cube.el;
@@ -762,7 +762,8 @@
     window.addEventListener('load', () => {
       setTimeout(function loop() {
         stepCubes();
-        setTimeout(loop, Math.random() * 850);
+        const delay = (Math.random() * 850) / (isEasterEggActive ? 4 : 1);
+        setTimeout(loop, delay);
       }, 2000);
     });
 
