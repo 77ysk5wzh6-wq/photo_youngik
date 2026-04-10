@@ -455,10 +455,16 @@
       isEasterEggActive = true;
       
       const containerGrams = document.querySelector('.color-dots');
+      const weightedColors = [
+        ...CUBE_COLORS.slice(0, 4), // Purple, Lime, Pink, Red
+        ...CUBE_COLORS.slice(0, 4), // (두 번씩 추가하여 확률 높임)
+        CUBE_COLORS[4]             // Black (한 번만 추가하여 확률 낮춤)
+      ];
+
       for (let i = 0; i < 30; i++) {
         const span = document.createElement('span');
-        // 처음에 지정한 5가지 색상 중에서 랜덤 선택
-        const color = CUBE_COLORS[Math.floor(Math.random() * CUBE_COLORS.length)];
+        // 검은색 확률은 낮게, 나머지 색상은 높게 선택
+        const color = weightedColors[Math.floor(Math.random() * weightedColors.length)];
         span.style.background = color;
         containerGrams.appendChild(span);
       }
