@@ -457,8 +457,10 @@
       const containerGrams = document.querySelector('.color-dots');
       const weightedColors = [
         ...CUBE_COLORS.slice(0, 4), // Purple, Lime, Pink, Red
-        ...CUBE_COLORS.slice(0, 4), // (두 번씩 추가하여 확률 높임)
-        CUBE_COLORS[4]             // Black (한 번만 추가하여 확률 낮춤)
+        ...CUBE_COLORS.slice(0, 4), 
+        ...CUBE_COLORS.slice(0, 4), // (각 3번씩 추가)
+        CUBE_COLORS[4],             // Black
+        CUBE_COLORS[4]              // (2번 추가하여 1.5배 비율 유지)
       ];
 
       for (let i = 0; i < 30; i++) {
