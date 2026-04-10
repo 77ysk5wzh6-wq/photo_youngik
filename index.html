@@ -210,6 +210,7 @@
 
     function playTypewriter() {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume();
       const t = ctx.currentTime;
 
       // 짧은 고주파 노이즈
@@ -344,6 +345,7 @@
 
     function playCubeMove() {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume();
       const t = ctx.currentTime;
 
       // 중저음 노이즈 — 나무/플라스틱 소재감
