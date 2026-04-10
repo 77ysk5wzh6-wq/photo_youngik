@@ -208,7 +208,73 @@
       card.style.width = calcSize(img, Math.random()) + 'px';
     }
 
+    function playTypewriter() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const t = ctx.currentTime;
+
+      // 짧은 고주파 노이즈
+      const bufferSize = ctx.sampleRate * 0.025;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 12);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 4000;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+
+      // 리버브 — 짧은 임펄스 컨볼버
+      const reverbLen = ctx.sampleRate * 0.6;
+      const reverbBuf = ctx.createBuffer(2, reverbLen, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = reverbBuf.getChannelData(ch);
+        for (let i = 0; i < reverbLen; i++) {
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 5);
+        }
+      }
+      const convolver = ctx.createConvolver();
+      convolver.buffer = reverbBuf;
+
+      const reverbGain = ctx.createGain();
+      reverbGain.gain.value = 0.18;
+
+      const dryGain = ctx.createGain();
+      dryGain.gain.value = 1;
+
+      // 저음 — 아주 짧고 작은 틱
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, t);
+      osc.frequency.exponentialRampToValueAtTime(60, t + 0.03);
+      const oscGain = ctx.createGain();
+      oscGain.gain.setValueAtTime(0.04, t);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+      noise.connect(hpf);
+      hpf.connect(gain);
+      gain.connect(dryGain);
+      gain.connect(convolver);
+      convolver.connect(reverbGain);
+      dryGain.connect(ctx.destination);
+      reverbGain.connect(ctx.destination);
+      osc.connect(oscGain);
+      oscGain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.03);
+
+      noise.start(t);
+      noise.stop(t + 0.025);
+    }
+
     function handleClick() {
+      playTypewriter();
       const top = deck.pop();
       deck.unshift(top);
       deck.forEach((c, i) => (c.style.zIndex = i + 1));
@@ -276,6 +342,55 @@
       ' 0,-1': { origin: 'right bottom', angle: -90 }, // 아래 (bottom--)
     };
 
+    function playCubeMove() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const t = ctx.currentTime;
+
+      // 중저음 노이즈 — 나무/플라스틱 소재감
+      const bufLen = ctx.sampleRate * 0.06;
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 8);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+
+      // 밴드패스 — 중저음만 통과 (700Hz)
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.value = 700;
+      bpf.Q.value = 1.2;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+      // 짧은 리버브
+      const reverbLen = ctx.sampleRate * 0.5;
+      const reverbBuf = ctx.createBuffer(2, reverbLen, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const rd = reverbBuf.getChannelData(ch);
+        for (let i = 0; i < reverbLen; i++) {
+          rd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 7);
+        }
+      }
+      const convolver = ctx.createConvolver();
+      convolver.buffer = reverbBuf;
+      const reverbGain = ctx.createGain();
+      reverbGain.gain.value = 0.1;
+
+      noise.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(ctx.destination);
+      gain.connect(convolver);
+      convolver.connect(reverbGain);
+      reverbGain.connect(ctx.destination);
+
+      noise.start(t);
+      noise.stop(t + 0.06);
+    }
+
     function rollKey(dc, dr) {
       return `${dc < 0 ? '-' : ' '}${Math.abs(dc)},${dr < 0 ? '-' : ' '}${Math.abs(dr)}`;
     }
@@ -323,6 +438,7 @@
       cube.targetCol  = cube.col + dc;
       cube.targetRow  = cube.row + dr;
 
+      playCubeMove();
       cube.el.style.transformOrigin = origin;
       cube.el.style.transition      = 'transform 0.24s ease';
       cube.el.style.transform       = `rotate(${angle}deg)`;
