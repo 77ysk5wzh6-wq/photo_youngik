@@ -381,7 +381,7 @@
       hpf.frequency.value = 4000;
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
 
       // 리버브 — 짧은 임펄스 컨볼버
@@ -605,7 +605,7 @@
           checkAllLoaded();
         },
       }).toDestination();
-      pianoSampler.volume.value = -32;
+      pianoSampler.volume.value = -28;
     }
 
     function playCubeMove() {
