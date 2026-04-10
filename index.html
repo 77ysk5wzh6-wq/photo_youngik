@@ -539,7 +539,10 @@
     initCubes();
 
     window.addEventListener('load', () => {
-      setTimeout(() => setInterval(stepCubes, 500), 2000);
+      setTimeout(function loop() {
+        stepCubes();
+        setTimeout(loop, Math.random() * 650);
+      }, 2000);
     });
 
     let resizeTimer;
