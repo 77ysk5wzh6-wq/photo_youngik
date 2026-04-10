@@ -451,6 +451,7 @@
     function dashToWall(cube) {
       if (cube.dashing) return;
       cube.dashing = true;
+      cube.animating = false; // 진행 중인 회전 상태 수동 해제
       playTypewriter();
 
       const el = cube.el;
@@ -596,6 +597,8 @@
       cube.el.style.transform       = `rotate(${angle}deg)`;
 
       setTimeout(() => {
+        if (cube.dashing) return; // 돌진 중이면 회전 정리 로직 건너뛰기
+
         cube.el.style.transition      = 'none';
         cube.el.style.transform       = '';
         cube.el.style.transformOrigin = '';
