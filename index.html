@@ -79,14 +79,14 @@
 
     #loading span {
       font-family: 'Fira Mono', monospace;
-      font-size: clamp(10px, 1.2vw, 15px);
+      font-size: clamp(12px, 1.5vw, 18px);
       font-weight: 400;
       letter-spacing: 0.1em;
       color: #111;
     }
 
     #loading .loading-text {
-      font-size: clamp(8px, 1vw, 12px);
+      font-size: clamp(10px, 1.25vw, 14px);
       color: rgb(241,165,250);
       letter-spacing: 0.05em;
     }
@@ -487,12 +487,23 @@
     }
 
     function showMusicOff() {
+      const isMobile = window.innerWidth <= 600;
       const msg = document.createElement('div');
       msg.textContent = 'music off';
+      
+      let posStyles = '';
+      if (isMobile) {
+        // 모바일: 오른쪽 상단 (큐브가 있던 자리)
+        const headerH = document.querySelector('header').offsetHeight;
+        posStyles = `right: 5vw; top: ${headerH + 8}px; text-align: right;`;
+      } else {
+        // PC: 왼쪽 하단
+        posStyles = `left: 2.4vw; bottom: 2.4vw;`;
+      }
+
       msg.style.cssText = `
         position: fixed;
-        left: 2.4vw;
-        bottom: 2.4vw;
+        ${posStyles}
         font-family: 'Fira Mono', monospace;
         font-size: clamp(8px, 0.65vw, 11px);
         color: #111;
