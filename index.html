@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="fav.png?" />
   <link rel="shortcut icon" type="image/x-icon" href="fav.png?" />
   <link href="https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -422,55 +423,46 @@
       ' 0,-1': { origin: 'right bottom', angle: -90 }, // 아래 (bottom--)
     };
 
-    function playCubeMove() {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      ctx.resume();
-      const t = ctx.currentTime;
+    // 저음 위주 + 고음 일부 (C2~C5)
+    const PIANO_NOTES = [
+      'C2','E2','G2','A2',
+      'C3','D3','E3','G3','A3','B3',
+      'C4','D4','E4','G4','A4',
+      'C5','E5'
+    ];
 
-      // 중저음 노이즈 — 나무/플라스틱 소재감
-      const bufLen = ctx.sampleRate * 0.06;
-      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) {
-        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 8);
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buf;
+    let pianoSampler = null;
+    let pianoReady   = false;
 
-      // 밴드패스 — 중저음만 통과 (700Hz)
-      const bpf = ctx.createBiquadFilter();
-      bpf.type = 'bandpass';
-      bpf.frequency.value = 700;
-      bpf.Q.value = 1.2;
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.06, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-
-      // 짧은 리버브
-      const reverbLen = ctx.sampleRate * 0.5;
-      const reverbBuf = ctx.createBuffer(2, reverbLen, ctx.sampleRate);
-      for (let ch = 0; ch < 2; ch++) {
-        const rd = reverbBuf.getChannelData(ch);
-        for (let i = 0; i < reverbLen; i++) {
-          rd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 7);
-        }
-      }
-      const convolver = ctx.createConvolver();
-      convolver.buffer = reverbBuf;
-      const reverbGain = ctx.createGain();
-      reverbGain.gain.value = 0.1;
-
-      noise.connect(bpf);
-      bpf.connect(gain);
-      gain.connect(ctx.destination);
-      gain.connect(convolver);
-      convolver.connect(reverbGain);
-      reverbGain.connect(ctx.destination);
-
-      noise.start(t);
-      noise.stop(t + 0.06);
+    function initPiano() {
+      pianoSampler = new Tone.Sampler({
+        urls: {
+          A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3',
+          A1: 'A1.mp3', C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3',
+          A2: 'A2.mp3', C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3',
+          A3: 'A3.mp3', C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3',
+          A4: 'A4.mp3', C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3',
+          A5: 'A5.mp3', C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3',
+          A6: 'A6.mp3', C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3',
+          A7: 'A7.mp3', C8: 'C8.mp3',
+        },
+        baseUrl: 'https://tonejs.github.io/audio/salamander/',
+        release: 2.5,
+        onload: () => { pianoReady = true; },
+      }).toDestination();
+      pianoSampler.volume.value = -26;
     }
+
+    document.addEventListener('click',     initPiano, { once: true });
+    document.addEventListener('touchstart', initPiano, { once: true });
+
+    function playCubeMove() {
+      if (!pianoReady) return;
+      const note = PIANO_NOTES[Math.floor(Math.random() * PIANO_NOTES.length)];
+      // attack만 트리거 — release 자연스럽게 울리도록 (겹침 허용)
+      pianoSampler.triggerAttack(note);
+    }
+
 
     function rollKey(dc, dr) {
       return `${dc < 0 ? '-' : ' '}${Math.abs(dc)},${dr < 0 ? '-' : ' '}${Math.abs(dr)}`;
@@ -533,6 +525,41 @@
         cube.el.style.left   = cube.col * size + 'px';
         cube.el.style.bottom = cube.row * size + 'px';
         cube.animating = false;
+
+        // 착지 선 효과
+        const line = document.createElement('div');
+        const thick = Math.max(1, Math.round(size / 5));
+        const nx = cube.col * size;
+        const ny = cube.row * size;
+
+        let lx, ly, lw, lh;
+        if (dc !== 0) {
+          // 좌/우 이동: 아랫면 착지 → 하단 수평선
+          lx = nx; ly = ny; lw = size; lh = thick;
+        } else if (dr > 0) {
+          // 위 이동 (pivot=right-top): 우측 수직선
+          lx = nx + size - thick; ly = ny; lw = thick; lh = size;
+        } else {
+          // 아래 이동 (pivot=right-bottom): 좌측 수직선
+          lx = nx; ly = ny; lw = thick; lh = size;
+        }
+
+        line.style.cssText = `
+          position:fixed;
+          left:${lx}px;
+          bottom:${ly}px;
+          width:${lw}px;
+          height:${lh}px;
+          background:#000;
+          z-index:201;
+          pointer-events:none;
+          opacity:1;
+          transition:opacity 0.4s ease;
+        `;
+
+        document.body.appendChild(line);
+        requestAnimationFrame(() => requestAnimationFrame(() => { line.style.opacity = '0'; }));
+        setTimeout(() => line.remove(), 420);
       }, 260);
     }
 
@@ -543,7 +570,7 @@
     window.addEventListener('load', () => {
       setTimeout(function loop() {
         stepCubes();
-        setTimeout(loop, Math.random() * 650);
+        setTimeout(loop, Math.random() * 850);
       }, 2000);
     });
 
