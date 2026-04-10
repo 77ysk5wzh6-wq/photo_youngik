@@ -21,7 +21,6 @@
       top: 0; left: 0; right: 0;
       z-index: 50;
       padding: 2.2vh 2.4vw;
-      background: #f8f7f4;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -47,6 +46,11 @@
       letter-spacing: 0.04em;
       transition: color 0.25s;
       white-space: nowrap;
+    }
+
+    .contact a[href^="mailto"] {
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .contact a:hover { color: #bbb; }
@@ -191,21 +195,101 @@
         container.appendChild(card);
         deck.push(card);
       });
-      bindTopCard();
-    }
-
-    function bindTopCard() {
-      deck.forEach(c => { c.onclick = null; c.ontouchend = null; });
-      if (!deck.length) return;
-      const top = deck[deck.length - 1];
-      top.onclick = handleClick;
-      top.ontouchend = function (e) { e.preventDefault(); handleClick(); };
+      bindCards();
     }
 
     function randomizeSize(card) {
       const img = card.querySelector('img');
       if (!img || !img.naturalWidth) return;
       card.style.width = calcSize(img, Math.random()) + 'px';
+    }
+
+    function sendToBack(card) {
+      playTypewriter();
+      // 스택에서 제거 후 맨 앞(index 0)으로
+      const idx = deck.indexOf(card);
+      if (idx === -1) return;
+      deck.splice(idx, 1);
+      deck.unshift(card);
+      deck.forEach((c, i) => (c.style.zIndex = i + 1));
+      // 위치를 다시 오른쪽 하단 기본값으로
+      const bottomGap = window.innerWidth <= 600 ? MOBILE_BOTTOM : GAP;
+      card.style.left   = '';
+      card.style.top    = '';
+      card.style.right  = GAP + 'px';
+      card.style.bottom = bottomGap + 'px';
+      randomizeSize(card);
+    }
+
+    // ── Drag & click ─────────────────────────────────────────
+    let dragState = null;
+    const DRAG_THRESHOLD = 6;
+
+    function bindCards() {
+      deck.forEach(card => {
+        card.onmousedown  = e => pointerDown(e, card, e.clientX, e.clientY);
+        card.ontouchstart = e => {
+          const touch = e.touches[0];
+          pointerDown(e, card, touch.clientX, touch.clientY);
+        };
+      });
+    }
+
+    function pointerDown(e, card, cx, cy) {
+      e.preventDefault();
+      // 드래그 시작 전 left/top으로 전환
+      const rect = card.getBoundingClientRect();
+      card.style.left   = rect.left + 'px';
+      card.style.top    = rect.top  + 'px';
+      card.style.right  = 'auto';
+      card.style.bottom = 'auto';
+      card.style.cursor = 'grabbing';
+
+      dragState = {
+        card,
+        startX:  cx,
+        startY:  cy,
+        offsetX: cx - rect.left,
+        offsetY: cy - rect.top,
+        moved:   false,
+      };
+    }
+
+    document.addEventListener('mousemove', e => pointerMove(e.clientX, e.clientY));
+    document.addEventListener('touchmove', e => {
+      if (!dragState) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      pointerMove(t.clientX, t.clientY);
+    }, { passive: false });
+
+    function pointerMove(cx, cy) {
+      if (!dragState) return;
+      const dx = cx - dragState.startX;
+      const dy = cy - dragState.startY;
+      if (!dragState.moved && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+        dragState.moved = true;
+      }
+      if (!dragState.moved) return;
+      dragState.card.style.left = (cx - dragState.offsetX) + 'px';
+      dragState.card.style.top  = (cy - dragState.offsetY) + 'px';
+    }
+
+    document.addEventListener('mouseup',   () => pointerUp());
+    document.addEventListener('touchend',  () => pointerUp());
+
+    function pointerUp() {
+      if (!dragState) return;
+      const { card, moved } = dragState;
+      dragState = null;
+      card.style.cursor = '';
+
+      if (!moved) {
+        // 그냥 클릭 → 맨 뒤로
+        sendToBack(card);
+      // 드래그든 클릭이든 z-index는 건드리지 않음
+      }
+      bindCards();
     }
 
     function playTypewriter() {
@@ -274,17 +358,10 @@
       noise.stop(t + 0.025);
     }
 
-    function handleClick() {
-      playTypewriter();
-      const top = deck.pop();
-      deck.unshift(top);
-      deck.forEach((c, i) => (c.style.zIndex = i + 1));
-      randomizeSize(top);
-      bindTopCard();
-    }
-
     document.addEventListener('keydown', e => {
-      if (e.key === ' ' || e.key === 'ArrowRight') { if (deck.length) handleClick(); }
+      if (e.key === ' ' || e.key === 'ArrowRight') {
+        if (deck.length) sendToBack(deck[deck.length - 1]);
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') e.preventDefault();
     });
 
