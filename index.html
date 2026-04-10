@@ -193,7 +193,8 @@
     function calcSize(img, ratio) {
       const headerH = document.querySelector('header').offsetHeight;
       const availH = window.innerHeight - headerH - GAP * 2;
-      const availW = window.innerWidth - GAP;
+      const rightGap = window.innerWidth <= 600 ? GAP / 2 : GAP;
+      const availW = window.innerWidth - rightGap;
       const isLandscape = img.naturalWidth >= img.naturalHeight;
       const ar = img.naturalHeight / img.naturalWidth;
       let w;
@@ -228,8 +229,10 @@
       IMAGES.forEach((src, i) => {
         const card = document.createElement('div');
         card.className = 'card';
-        const bottomGap = window.innerWidth <= 600 ? MOBILE_BOTTOM : GAP;
-        card.style.cssText = `right:${GAP}px; bottom:${bottomGap}px; z-index:${i + 1};`;
+        const isMobile = window.innerWidth <= 600;
+        const bottomGap = isMobile ? MOBILE_BOTTOM : GAP;
+        const rightGap  = isMobile ? GAP / 2 : GAP;
+        card.style.cssText = `right:${rightGap}px; bottom:${bottomGap}px; z-index:${i + 1};`;
         const img = document.createElement('img');
         img.src = src;
         img.alt = '';
@@ -261,10 +264,12 @@
       deck.unshift(card);
       deck.forEach((c, i) => (c.style.zIndex = i + 1));
       // 위치를 다시 오른쪽 하단 기본값으로
-      const bottomGap = window.innerWidth <= 600 ? MOBILE_BOTTOM : GAP;
+      const isMobile = window.innerWidth <= 600;
+      const bottomGap = isMobile ? MOBILE_BOTTOM : GAP;
+      const rightGap  = isMobile ? GAP / 2 : GAP;
       card.style.left   = '';
       card.style.top    = '';
-      card.style.right  = GAP + 'px';
+      card.style.right  = rightGap + 'px';
       card.style.bottom = bottomGap + 'px';
       randomizeSize(card);
     }
