@@ -446,8 +446,8 @@
     const ROLL = {
       ' 1, 0': { origin: 'right bottom', angle:  90 }, // 오른쪽
       '-1, 0': { origin: 'left bottom',  angle: -90 }, // 왼쪽
-      ' 0, 1': { origin: 'right top',    angle:  90 }, // 위 (bottom++)
-      ' 0,-1': { origin: 'right bottom', angle: -90 }, // 아래 (bottom--)
+      ' 0, 1': { origin: 'right top',    angle:  90 }, // 위
+      ' 0,-1': { origin: 'right bottom', angle: -90 }, // 아래
     };
 
     // 저음 위주 + 고음 일부 (C2~C5)
@@ -535,6 +535,9 @@
       cube.targetCol  = cube.col + dc;
       cube.targetRow  = cube.row + dr;
 
+      const nx = cube.targetCol * size;
+      const ny = cube.targetRow * size;
+
       playCubeMove();
       cube.el.style.transformOrigin = origin;
       cube.el.style.transition      = 'transform 0.24s ease';
@@ -550,22 +553,15 @@
         cube.el.style.bottom = cube.row * size + 'px';
         cube.animating = false;
 
-        // 착지 선 효과
+        // 착지 선 효과 — 회전 완료 직후 생성
         const line = document.createElement('div');
         const thick = Math.max(1, Math.round(size / 5));
-        const nx = cube.col * size;
-        const ny = cube.row * size;
-
         let lx, ly, lw, lh;
+
         if (dc !== 0) {
-          // 좌/우 이동: 아랫면 착지 → 하단 수평선
           lx = nx; ly = ny; lw = size; lh = thick;
-        } else if (dr > 0) {
-          // 위 이동 (pivot=right-top): 우측 수직선
-          lx = nx + size - thick; ly = ny; lw = thick; lh = size;
         } else {
-          // 아래 이동 (pivot=right-bottom): 좌측 수직선
-          lx = nx; ly = ny; lw = thick; lh = size;
+          lx = nx + size - thick; ly = ny; lw = thick; lh = size;
         }
 
         line.style.cssText = `
@@ -577,13 +573,19 @@
           background:#000;
           z-index:201;
           pointer-events:none;
-          opacity:1;
-          transition:opacity 0.4s ease;
+          opacity:0;
+          transition:opacity 0.05s ease;
         `;
-
         document.body.appendChild(line);
-        requestAnimationFrame(() => requestAnimationFrame(() => { line.style.opacity = '0'; }));
-        setTimeout(() => line.remove(), 420);
+
+        requestAnimationFrame(() => {
+          line.style.opacity = '1';
+          setTimeout(() => {
+            line.style.transition = 'opacity 0.4s ease';
+            line.style.opacity = '0';
+            setTimeout(() => line.remove(), 420);
+          }, 80);
+        });
       }, 260);
     }
 
