@@ -58,6 +58,31 @@
 
     .contact a:hover { color: #bbb; }
 
+    /* ── Loading screen ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: #fffffd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.7s ease;
+    }
+
+    #loading.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #loading span {
+      font-family: 'Fira Mono', monospace;
+      font-size: clamp(10px, 1.2vw, 15px);
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      color: #111;
+    }
+
     /* 큐브는 JS가 개별 position:fixed로 관리 */
     .color-dots span {
       position: fixed;
@@ -103,6 +128,8 @@
   </style>
 </head>
 <body>
+
+  <div id="loading"><span>youn youngik</span></div>
 
   <header>
     <h1>Youn Youngik – Seoul</h1>
@@ -435,26 +462,23 @@
     let pianoReady   = false;
 
     function initPiano() {
+      // C2~E5 범위에 필요한 샘플만 로드
       pianoSampler = new Tone.Sampler({
         urls: {
-          A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3',
-          A1: 'A1.mp3', C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3',
-          A2: 'A2.mp3', C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3',
-          A3: 'A3.mp3', C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3',
-          A4: 'A4.mp3', C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3',
-          A5: 'A5.mp3', C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3',
-          A6: 'A6.mp3', C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3',
-          A7: 'A7.mp3', C8: 'C8.mp3',
+          C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
+          C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
+          C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+          C5: 'C5.mp3', 'D#5': 'Ds5.mp3',
         },
         baseUrl: 'https://tonejs.github.io/audio/salamander/',
         release: 2.5,
-        onload: () => { pianoReady = true; },
+        onload: () => {
+          pianoReady = true;
+          checkAllLoaded();
+        },
       }).toDestination();
       pianoSampler.volume.value = -26;
     }
-
-    document.addEventListener('click',     initPiano, { once: true });
-    document.addEventListener('touchstart', initPiano, { once: true });
 
     function playCubeMove() {
       if (!pianoReady) return;
@@ -563,9 +587,45 @@
       }, 260);
     }
 
-    // ── Init & resize ────────────────────────────────────────
+    // ── Loading 완료 체크 ─────────────────────────────────────
+    let imagesLoaded = false;
+
+    function checkAllLoaded() {
+      if (!imagesLoaded || !pianoReady) return;
+      const loading = document.getElementById('loading');
+      loading.classList.add('fade-out');
+      setTimeout(() => loading.remove(), 750);
+    }
+
+    // 이미지 로드 추적
+    function trackImages() {
+      const imgs = document.querySelectorAll('.card img');
+      let total = imgs.length;
+      let loaded = 0;
+      if (total === 0) { imagesLoaded = true; checkAllLoaded(); return; }
+      imgs.forEach(img => {
+        if (img.complete && img.naturalWidth) {
+          loaded++;
+          if (loaded >= total) { imagesLoaded = true; checkAllLoaded(); }
+        } else {
+          const orig = img.onload;
+          img.onload = function () {
+            if (orig) orig.call(this);
+            loaded++;
+            if (loaded >= total) { imagesLoaded = true; checkAllLoaded(); }
+          };
+        }
+      });
+    }
+
+    // ── Init & resize ─────────────────────────────────────────
     buildStack();
     initCubes();
+    trackImages();
+
+    // 첫 인터랙션 시 피아노 초기화
+    document.addEventListener('click',     initPiano, { once: true });
+    document.addEventListener('touchstart', initPiano, { once: true });
 
     window.addEventListener('load', () => {
       setTimeout(function loop() {
