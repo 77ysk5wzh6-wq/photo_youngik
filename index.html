@@ -519,6 +519,11 @@
       cube.animating = false; // 진행 중인 회전 상태 수동 해제
       playTypewriter();
 
+      // 모든 큐브가 클릭된 상태(돌진 예정)인지 즉시 확인
+      if (cubeState.every(c => c.dashing)) {
+        showMusicOff();
+      }
+
       const el = cube.el;
       // 현재 회전 애니메이션 등이 있다면 즉시 중단
       el.style.transition = 'none';
@@ -554,11 +559,6 @@
             el.remove();
             const idx = cubeState.indexOf(cube);
             if (idx !== -1) cubeState.splice(idx, 1);
-            
-            // 모든 큐브가 사라졌을 때 메시지 출력
-            if (cubeState.length === 0) {
-              showMusicOff();
-            }
           }, 450);
         }
       };
