@@ -668,14 +668,14 @@
       });
     }
 
-    // ── Init & resize ─────────────────────────────────────────
     buildStack();
     initCubes();
+    initPiano();
     trackImages();
 
-    // 첫 인터랙션 시 피아노 초기화
-    document.addEventListener('click',     initPiano, { once: true });
-    document.addEventListener('touchstart', initPiano, { once: true });
+    // 브라우저 오디오 정책: 첫 상호작용 시 Tone.js 컨텍스트 재개
+    document.addEventListener('mousedown', () => Tone.start(), { once: true });
+    document.addEventListener('touchstart', () => Tone.start(), { once: true });
 
     window.addEventListener('load', () => {
       setTimeout(function loop() {
