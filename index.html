@@ -466,15 +466,51 @@
         CUBE_COLORS[4]              // (2번 추가하여 1.5배 비율 유지)
       ];
 
-      for (let i = 0; i < 30; i++) {
+      const size = getCubeSize();
+      const maxCol = Math.floor(window.innerWidth / size) - 1;
+      const maxRow = Math.floor(window.innerHeight / size) - 1;
+
+      let count = 0;
+      const totalCubes = 30;
+      const duration = 2000; // 2초
+      const interval = duration / totalCubes;
+
+      function spawn() {
+        if (count >= totalCubes) return;
+
         const span = document.createElement('span');
-        // 검은색 확률은 낮게, 나머지 색상은 높게 선택
         const color = weightedColors[Math.floor(Math.random() * weightedColors.length)];
         span.style.background = color;
+        
+        const col = Math.floor(Math.random() * (maxCol + 1));
+        const row = Math.floor(Math.random() * (maxRow + 1));
+
+        span.style.width  = size + 'px';
+        span.style.height = size + 'px';
+        span.style.left   = col * size + 'px';
+        span.style.bottom = row * size + 'px';
+        
         containerGrams.appendChild(span);
+        
+        const cubeObj = { 
+          col, 
+          row, 
+          el: span, 
+          dashing: false, 
+          color: color.replace(/\s/g, '') 
+        };
+        
+        span.onclick = () => dashToWall(cubeObj);
+        cubeState.push(cubeObj);
+
+        // 등장할 때마다 랜덤한 피아노 음
+        playCubeMove();
+
+        count++;
+        setTimeout(spawn, interval);
       }
-      // 새 큐브들을 포함하여 초기화
-      initCubes();
+
+      spawn();
     }
 
     function initCubes() {
