@@ -1072,12 +1072,27 @@
     document.addEventListener('mousedown', () => Tone.start(), { once: true });
     document.addEventListener('touchstart', () => Tone.start(), { once: true });
 
-    window.addEventListener('load', () => {
-      setTimeout(function loop() {
-        if (!isRecalling) stepCubes();
+    let cubeLoopId = null;
+    function runCubeLoop() {
+      if (document.hidden) return;
+      cubeLoopId = setTimeout(function loop() {
+        if (!isRecalling && !document.hidden) stepCubes();
         const delay = (Math.random() * 1050) / (isEasterEggActive ? 4 : 1);
-        setTimeout(loop, delay);
+        cubeLoopId = setTimeout(loop, delay);
       }, 2000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearTimeout(cubeLoopId);
+        cubeLoopId = null;
+      } else {
+        if (!cubeLoopId) runCubeLoop();
+      }
+    });
+
+    window.addEventListener('load', () => {
+      runCubeLoop();
     });
 
     let resizeTimer;
