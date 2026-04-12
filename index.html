@@ -60,6 +60,34 @@
     }
 
     .contact a:hover { color: #bbb; }
+    
+    .category-menu {
+      position: fixed;
+      left: 2.4vw;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2vh;
+    }
+
+    .category-menu button {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: clamp(8px, 0.65vw, 11px);
+      color: #111;
+      text-align: left;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.25s;
+      padding: 0;
+      letter-spacing: 0.04em;
+    }
+
+    .category-menu button:hover { color: #bbb; }
+    .category-menu button.active { font-weight: 700; }
 
     /* ── Loading screen ── */
     #loading {
@@ -136,6 +164,15 @@
       header h1 { font-size: 10px; letter-spacing: 0; }
       .contact { gap: 5vw; }
       .contact a { font-size: 10px; }
+      .category-menu {
+        left: 5vw;
+        top: calc(4vw + 24px); /* 헤비 아래에 위치 */
+        bottom: auto;
+        transform: none;
+        flex-direction: row;
+        gap: 4vw;
+      }
+      .category-menu button { font-size: 10px; }
     }
   </style>
 </head>
@@ -154,6 +191,12 @@
     </div>
   </header>
 
+  <nav class="category-menu">
+    <button id="btn-daily_dump" class="active" onclick="switchProject('daily_dump')">daily_dump</button>
+    <button id="btn-cage3000" onclick="switchProject('cage3000')">cage3000</button>
+    <button id="btn-lyjel" onclick="switchProject('lyjel')">lyjel</button>
+  </nav>
+
   <div class="color-dots">
     <span class="orig" style="background:rgb(134,100,213)"></span>
     <span class="orig" style="background:rgb(218,254,99)"></span>
@@ -165,10 +208,57 @@
   <div class="stack" id="stack"></div>
 
   <script>
-    // ── Photo stack ─────────────────────────────────────────
-    const IMAGES = Array.from({length: 27}, (_, i) =>
-      `assets_web/youn_photo_${String(i + 1).padStart(2, '0')}.jpg`
-    );
+    // ── Projects configuration ──────────────────────────────
+    const PROJECTS = {
+      daily_dump: { path: 'assets_web', prefix: 'daily_dump', count: 20 },
+      cage3000:   { path: 'asset_cage3000', prefix: 'cage3000', count: 11 },
+      lyjel:      { path: 'asset_lyjel', prefix: 'lyjel', count: 11 }
+    };
+
+    let currentProject = 'daily_dump';
+    let IMAGES = [];
+    let layout = [];
+
+    function loadProject(projectId) {
+      const config = PROJECTS[projectId];
+      IMAGES = Array.from({length: config.count}, (_, i) =>
+        `${config.path}/${config.prefix}_${String(i + 1).padStart(2, '0')}.jpg`
+      );
+      
+      shuffle(IMAGES);
+      
+      // daily_dump일 때만 15번 고정 (기존 로직 유지)
+      if (projectId === 'daily_dump') {
+        const frontPhoto = 'assets_web/daily_dump_15.jpg';
+        const frontIdx = IMAGES.indexOf(frontPhoto);
+        if (frontIdx > -1) {
+          IMAGES.splice(frontIdx, 1);
+          IMAGES.push(frontPhoto);
+        }
+      }
+
+      const rand = mulberry32(Date.now());
+      layout = IMAGES.map(() => ({ ratio: rand() }));
+      
+      buildStack();
+    }
+
+    function switchProject(projectId) {
+      if (currentProject === projectId) return;
+      currentProject = projectId;
+
+      // 버튼 활성화 표시
+      document.querySelectorAll('.category-menu button').forEach(btn => {
+        btn.classList.toggle('active', btn.id === `btn-${projectId}`);
+      });
+
+      // 스택 비우기 애니메이션 혹은 즉시 교체
+      container.style.opacity = '0';
+      setTimeout(() => {
+        loadProject(projectId);
+        container.style.opacity = '1';
+      }, 300);
+    }
 
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -176,15 +266,6 @@
         [array[i], array[j]] = [array[j], array[i]];
       }
       return array;
-    }
-    shuffle(IMAGES);
-
-    // 15번 사진을 가장 위(맨 앞)에 고정
-    const frontPhoto = 'assets_web/youn_photo_15.jpg';
-    const frontIdx = IMAGES.indexOf(frontPhoto);
-    if (frontIdx > -1) {
-      IMAGES.splice(frontIdx, 1);
-      IMAGES.push(frontPhoto);
     }
 
     function mulberry32(seed) {
@@ -195,9 +276,6 @@
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     }
-    const rand = mulberry32(Date.now()); // 시드를 현재 시간으로 변경하여 매번 다른 레이아웃 유도
-    const layout = IMAGES.map(() => ({ ratio: rand() }));
-
     const container = document.getElementById('stack');
     let deck = [];
 
@@ -205,14 +283,26 @@
     const MOBILE_BOTTOM = window.innerHeight * 0.055;
 
     function calcSize(img, ratio) {
+      const isMobile = window.innerWidth <= 600;
       const headerH = document.querySelector('header').offsetHeight;
-      const availH = window.innerHeight - headerH - GAP * 2;
-      const rightGap = window.innerWidth <= 600 ? GAP / 2 : GAP;
+      const catMenu = document.querySelector('.category-menu');
+      
+      let topReserved = headerH;
+      if (isMobile && catMenu) {
+        const rect = catMenu.getBoundingClientRect();
+        topReserved = rect.bottom;
+      }
+
+      const bottomGap = isMobile ? MOBILE_BOTTOM : GAP;
+      const availH = window.innerHeight - topReserved - bottomGap - (GAP * 1.5);
+      
+      const rightGap = isMobile ? GAP / 2 : GAP;
       const availW = window.innerWidth - rightGap;
       const isLandscape = img.naturalWidth >= img.naturalHeight;
       const ar = img.naturalHeight / img.naturalWidth;
+      
       let w;
-      if (window.innerWidth <= 600) {
+      if (isMobile) {
         if (isLandscape) {
           const maxW = availW * 0.9;
           w = maxW * (0.8 + ratio * 0.2);
@@ -795,7 +885,7 @@
       });
     }
 
-    buildStack();
+    loadProject('daily_dump');
     initCubes();
     initPiano();
     trackImages();
