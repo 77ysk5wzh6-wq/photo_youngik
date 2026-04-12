@@ -801,7 +801,11 @@
       const dy = cy - dragState.startY;
       if (!dragState.moved && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
         dragState.moved = true;
-        showDesktopDragHint();
+        if (window.innerWidth <= 600) {
+          showFooter(); // 모바일: 하단 문구 팝업
+        } else {
+          showDesktopDragHint(); // PC: 우측 팝업
+        }
       }
       if (!dragState.moved) return;
       dragState.card.style.left = (cx - dragState.offsetX) + 'px';
@@ -1313,6 +1317,7 @@
 
     // 마우스 휠 감지
     window.addEventListener('wheel', (e) => {
+      if (window.innerWidth <= 600) return; // 모바일 스크롤 반응 해제
       if (e.deltaY > 0) showFooter();   // 아래로 스크롤
       else hideFooter();                 // 위로 스크롤
     }, { passive: true });
@@ -1323,6 +1328,7 @@
       touchStartY = e.touches[0].clientY;
     }, { passive: true });
     window.addEventListener('touchmove', (e) => {
+      if (window.innerWidth <= 600) return; // 모바일 스크롤(스와이프) 반응 해제
       const dy = touchStartY - e.touches[0].clientY;
       if (dy > 10) showFooter();        // 위로 스와이프 (= 아래로 스크롤)
       else if (dy < -10) hideFooter();  // 아래로 스와이프 (= 위로 스크롤)
