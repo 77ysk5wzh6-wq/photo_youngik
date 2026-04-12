@@ -374,8 +374,10 @@
         let retryCount = 0;
         let totalSteps = 0;
         let done = false; // 이 큐브가 복귀 완료 여부 (중복 카운트 방지)
-        const maxSteps = (Math.floor(window.innerWidth / getCubeSize()) + 
-                          Math.floor(window.innerHeight / getCubeSize())) * 3;
+        let lastCol = -1, lastRow = -1;
+        let fallbackTriggers = 0;
+        // 최대 80번 이동 안에 못가면 강제 순간이동 (지루한 루프 방지)
+        const maxSteps = 80;
         const MAX_RETRY = 8;
 
         function finish() {
@@ -432,6 +434,13 @@
           let directions = [{ dc: preferDc, dr: preferDr }];
 
           if (retryCount >= MAX_RETRY) {
+            fallbackTriggers++;
+            if (fallbackTriggers > 6) {
+              // 완전히 경로가 막힌 상태 (교착) -> 강제 순간이동
+              finish();
+              return;
+            }
+            
             if (preferDc !== 0) {
               const drToward = cube.row < targetRow ? 1 : (cube.row > targetRow ? -1 : 0);
               const drAway   = -drToward || 1;
@@ -447,6 +456,9 @@
           }
 
           let moved = false;
+          let chosenDc = null, chosenDr = null;
+
+          // 1. 방금 이동해온 직전 위치(lastCol, lastRow)가 아닌 새로운 경로 먼저 탐색
           for (const { dc, dr } of directions) {
             const nc = cube.col + dc;
             const nr = cube.row + dr;
@@ -454,14 +466,41 @@
                 nc > Math.floor(window.innerWidth / size) - 1 ||
                 nr > Math.floor(window.innerHeight / size) - 1) continue;
             if (isOccupied(nc, nr, cube)) continue;
+            
+            if (directions.length > 1 && nc === lastCol && nr === lastRow) {
+              continue; // 핑퐁 진동 방지를 위해 일단 스킵
+            }
+            
+            chosenDc = dc; chosenDr = dr;
+            break;
+          }
 
-            if (performRoll(cube, dc, dr, true, () => {
+          // 2. 만약 우회로가 없고, 오직 직전 위치로만 돌아갈 수 있다면 그거라도 선택
+          if (chosenDc === null && directions.length > 1) {
+            for (const { dc, dr } of directions) {
+              const nc = cube.col + dc;
+              const nr = cube.row + dr;
+              if (nc < 0 || nr < 0 ||
+                  nc > Math.floor(window.innerWidth / size) - 1 ||
+                  nr > Math.floor(window.innerHeight / size) - 1) continue;
+              if (isOccupied(nc, nr, cube)) continue;
+              chosenDc = dc; chosenDr = dr;
+              break;
+            }
+          }
+
+          if (chosenDc !== null) {
+            const oldCol = cube.col;
+            const oldRow = cube.row;
+            if (performRoll(cube, chosenDc, chosenDr, true, () => {
+              lastCol = oldCol; // 이동을 완료한 후, 출발했던 위치를 직전 위치로 갱신
+              lastRow = oldRow;
               retryCount = 0;
+              fallbackTriggers = 0; // 길을 찾았으니 막힘 카운트 초기화
               totalSteps++;
               setTimeout(nextStep, 10);
             })) {
               moved = true;
-              break;
             }
           }
 
