@@ -43,6 +43,9 @@
     #footer-credit.visible {
       transform: translateX(-50%) translateY(0%);
     }
+    #footer-credit .mobile-text {
+      display: none;
+    }
 
     header {
       position: fixed;
@@ -196,6 +199,9 @@
       }
       .category-menu button { font-size: 10px; }
       .category-menu button.active { padding-left: 0; }
+      
+      #footer-credit .desktop-text { display: none; }
+      #footer-credit .mobile-text { display: inline; }
     }
   </style>
 </head>
@@ -230,7 +236,10 @@
 
   <div class="stack" id="stack"></div>
 
-  <div id="footer-credit">Web design by youngik youn</div>
+  <div id="footer-credit">
+    <span class="desktop-text">Web design by youngik youn</span>
+    <span class="mobile-text">just touch</span>
+  </div>
 
   <script>
     // ── Projects configuration ──────────────────────────────
