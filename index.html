@@ -200,6 +200,10 @@
       .category-menu button { font-size: 10px; }
       .category-menu button.active { padding-left: 0; }
       
+      #footer-credit {
+        background: rgb(218,254,99);
+        color: #111;
+      }
       #footer-credit .desktop-text { display: none; }
       #footer-credit .mobile-text { display: inline; }
     }
@@ -1211,7 +1215,8 @@
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { buildStack(); initCubes(); }, 200);
+      // initCubes는 다시 호출하지 않음 (스크롤 시 상태 초기화 방지)
+      resizeTimer = setTimeout(() => { buildStack(); }, 200);
     });
 
     document.addEventListener('contextmenu', e => e.preventDefault());
