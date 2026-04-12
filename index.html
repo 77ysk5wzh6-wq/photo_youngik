@@ -338,13 +338,15 @@
         
         let retryCount = 0;
         let totalSteps = 0;
-        // 최대 이동 허용 횟수 (화면 너비+높이의 3배면 충분)
+        let done = false; // 이 큐브가 복귀 완료 여부 (중복 카운트 방지)
         const maxSteps = (Math.floor(window.innerWidth / getCubeSize()) + 
                           Math.floor(window.innerHeight / getCubeSize())) * 3;
         const MAX_RETRY = 8;
 
-        function forceSnap() {
-          // 강제 귀환: 부드럽게 투명도 유지하며 위치 스냅
+        function finish() {
+          if (done) return;
+          done = true;
+          // 현재 위치가 홈과 미세하게 다를 수 있으니 강제 스냅으로 정확히 고정
           cube.el.style.transition = 'none';
           cube.el.style.transform = '';
           cube.el.style.transformOrigin = '';
@@ -359,15 +361,22 @@
         }
 
         function nextStep() {
-          if (cube.dashing || (cube.col === targetCol && cube.row === targetRow)) {
-            finishedCount++;
-            if (finishedCount === total) isRecalling = false;
+          if (done) return; // 이미 완료된 큐브는 더 이상 이동 안 함
+
+          if (cube.dashing) {
+            finish();
+            return;
+          }
+
+          // 홈 도착 → 즉시 스냅으로 확정
+          if (cube.col === targetCol && cube.row === targetRow) {
+            finish();
             return;
           }
 
           // 너무 많이 맴돌면 강제 귀환
           if (totalSteps > maxSteps) {
-            forceSnap();
+            finish();
             return;
           }
 
@@ -380,20 +389,15 @@
           }
 
           const size = getCubeSize();
-
-          // 이동 방향 우선순위: [목표 방향, 집에 가까운 우회 방향, 멀어지는 우회 방향]
           let directions = [{ dc: preferDc, dr: preferDr }];
 
           if (retryCount >= MAX_RETRY) {
-            // 우회: 수직 방향 중 목표에 더 가까워지는 방향을 먼저 시도
             if (preferDc !== 0) {
-              // 좌우 이동 중 막힘 → 위/아래 우회
               const drToward = cube.row < targetRow ? 1 : (cube.row > targetRow ? -1 : 0);
               const drAway   = -drToward || 1;
               directions.push({ dc: 0, dr: drToward || 1 });
               directions.push({ dc: 0, dr: drAway });
             } else {
-              // 위아래 이동 중 막힘 → 좌/우 우회
               const dcToward = cube.col < targetCol ? 1 : (cube.col > targetCol ? -1 : 0);
               const dcAway   = -dcToward || 1;
               directions.push({ dc: dcToward || 1, dr: 0 });
@@ -427,6 +431,7 @@
           }
         }
         nextStep();
+
       });
     }
 
