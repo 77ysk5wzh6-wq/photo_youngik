@@ -357,7 +357,12 @@
           cube.el.style.left   = targetCol * size + 'px';
           cube.el.style.bottom = targetRow * size + 'px';
           finishedCount++;
-          if (finishedCount === total) isRecalling = false;
+          if (finishedCount === total) {
+            // 모든 큐브가 복귀한 후 2초간 대기 (피아노 소리 및 자율 이동 정지)
+            setTimeout(() => {
+              isRecalling = false;
+            }, 1500);
+          }
         }
 
         function nextStep() {
