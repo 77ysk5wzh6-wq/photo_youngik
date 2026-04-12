@@ -1102,11 +1102,11 @@
 
       // 방향 후보 (가중치: PC→오른쪽·위, Mobile→왼쪽·아래)
       const allDirs = isMobile
-        ? [ {dc:-1,dr:0},{dc:-1,dr:0},{dc:-1,dr:0},
-            {dc:0,dr:-1},{dc:0,dr:-1},{dc:0,dr:-1},
+        ? [ {dc:-1,dr:0},{dc:-1,dr:0},{dc:-1,dr:0},{dc:-1,dr:0},
+            {dc:0,dr:-1},{dc:0,dr:-1},{dc:0,dr:-1},{dc:0,dr:-1},
             {dc:1,dr:0}, {dc:0,dr:1} ]
-        : [ {dc:1,dr:0}, {dc:1,dr:0}, {dc:1,dr:0},
-            {dc:0,dr:1}, {dc:0,dr:1}, {dc:0,dr:1},
+        : [ {dc:1,dr:0}, {dc:1,dr:0}, {dc:1,dr:0}, {dc:1,dr:0},
+            {dc:0,dr:1}, {dc:0,dr:1}, {dc:0,dr:1}, {dc:0,dr:1},
             {dc:-1,dr:0},{dc:0,dr:-1} ];
 
       const validDirs = allDirs.filter(({dc, dr}) => {
