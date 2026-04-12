@@ -218,6 +218,8 @@
     let currentProject = 'daily_dump';
     let IMAGES = [];
     let layout = [];
+    let isRecalling = false;
+    let COLOR_HOMES = {}; // 각 색상별 초기 위치 저장
 
     function loadProject(projectId) {
       const config = PROJECTS[projectId];
@@ -247,6 +249,12 @@
       if (currentProject === projectId) return;
       currentProject = projectId;
 
+      // 카테고리 전환 시 사진 클릭과 같은 소리 재생
+      playTypewriter();
+
+      // 큐브 복귀 애니메이션 시작
+      recallAllCubes();
+
       // 버튼 활성화 표시
       document.querySelectorAll('.category-menu button').forEach(btn => {
         btn.classList.toggle('active', btn.id === `btn-${projectId}`);
@@ -258,6 +266,196 @@
         loadProject(projectId);
         container.style.opacity = '1';
       }, 300);
+    }
+
+    function recallAllCubes() {
+      if (isRecalling) return;
+      isRecalling = true;
+
+      // 이스터에그 상태인 경우 모든 큐브 즉시 제거 후 5개 초기 상태로 재등장
+      if (isEasterEggActive) {
+        cubeState.forEach(c => c.el.remove());
+        cubeState = [];
+        isEasterEggActive = false;
+        
+        spawnBaseCubes();
+        
+        // isRecalling은 spawnBaseCubes 내부의 2초 후 첫 이동이 끝난 뒤에 false로 변경
+        return;
+      }
+
+      const duration = 600; // 0.6초 내 복귀 시도
+      let finishedCount = 0;
+      const total = cubeState.filter(c => !c.dashing).length;
+
+      if (total === 0) {
+        isRecalling = false;
+        return;
+      }
+
+      cubeState.forEach(cube => {
+        if (cube.dashing) return;
+        
+        // 색상에 맞는 '진짜' 초기 위치 할당
+        const home = COLOR_HOMES[cube.color];
+        const targetCol = home ? home.col : cube.initialCol;
+        const targetRow = home ? home.row : cube.initialRow;
+
+        const dist = Math.abs(cube.col - targetCol) + Math.abs(cube.row - targetRow);
+        if (dist === 0) {
+          finishedCount++;
+          if (finishedCount === total) isRecalling = false;
+          return;
+        }
+
+        // 각 스텝의 간격 계산 (최소 50ms)
+        const stepDelay = Math.max(50, Math.floor(duration / dist));
+        
+        function nextStep() {
+          if (cube.dashing || (cube.col === targetCol && cube.row === targetRow)) {
+            finishedCount++;
+            if (finishedCount === total) isRecalling = false;
+            return;
+          }
+
+          let dc = 0, dr = 0;
+          if (cube.col !== targetCol) {
+            dc = cube.col < targetCol ? 1 : -1;
+          } else if (cube.row !== targetRow) {
+            dr = cube.row < targetRow ? 1 : -1;
+          }
+
+          // 충돌 확인: 목표 지점이 이미 점유되어 있으면 대기 후 다시 시도
+          if (isOccupied(cube.col + dc, cube.row + dr, cube)) {
+            setTimeout(nextStep, 20);
+            return;
+          }
+
+          // 굴리기 로직 수행 (시작 실패 시 대기 후 재시도)
+          if (!performRoll(cube, dc, dr, true, () => {
+            setTimeout(nextStep, 10); // 거의 즉시 다음 스텝
+          })) {
+            setTimeout(nextStep, 20);
+          }
+        }
+        nextStep();
+      });
+    }
+
+    function spawnBaseCubes() {
+      const containerGrams = document.querySelector('.color-dots');
+      const size = getCubeSize();
+      
+      CUBE_COLORS.forEach(colorStr => {
+        const normColor = colorStr.replace(/\s/g, '');
+        const home = COLOR_HOMES[normColor];
+        if (!home) return;
+
+        const span = document.createElement('span');
+        span.style.background = colorStr;
+        span.style.width  = size + 'px';
+        span.style.height = size + 'px';
+        span.style.left   = home.col * size + 'px';
+        span.style.bottom = home.row * size + 'px';
+        span.style.opacity = '0';
+        span.style.transition = 'opacity 1s ease';
+        
+        containerGrams.appendChild(span);
+        
+        const cubeObj = { 
+          col: home.col, 
+          row: home.row, 
+          initialCol: home.col, 
+          initialRow: home.row, 
+          el: span, 
+          dashing: false, 
+          color: normColor 
+        };
+        
+        span.onclick = () => dashToWall(cubeObj);
+        cubeState.push(cubeObj);
+
+        // 다음 프레임에서 페이드 인 시작
+        requestAnimationFrame(() => {
+          span.style.opacity = '1';
+        });
+
+        // 1초 후(페이드 인 완료 시점) 무작위 이동 및 피아노 소리 재생
+        setTimeout(() => {
+          const validDirs = [];
+          [ {dc:1, dr:0}, {dc:-1, dr:0}, {dc:0, dr:1}, {dc:0, dr:-1} ].forEach(d => {
+            const nc = cubeObj.col + d.dc;
+            const nr = cubeObj.row + d.dr;
+            if (nc >= 0 && nc <= Math.floor(window.innerWidth/size)-1 && 
+                nr >= 0 && nr <= Math.floor(window.innerHeight/size)-1 &&
+                !isOccupied(nc, nr, cubeObj)) {
+              validDirs.push(d);
+            }
+          });
+          if (validDirs.length) {
+            const { dc, dr } = validDirs[Math.floor(Math.random() * validDirs.length)];
+            performRoll(cubeObj, dc, dr);
+          }
+          
+          // 모든 큐브의 타임아웃이 끝날 때쯤 메인 루프 재개 (한 번만 실행되도록 체크)
+          setTimeout(() => {
+            isRecalling = false;
+          }, 500);
+        }, 2000);
+      });
+    }
+
+    function isOccupied(c, r, ignoreCube) {
+      return cubeState.some(cube => {
+        if (cube === ignoreCube) return false;
+        if (cube.dashing) return false;
+        // 현재 위치 또는 이동 중인 목표 위치 확인
+        if (cube.col === c && cube.row === r) return true;
+        if (cube.animating && cube.targetCol === c && cube.targetRow === r) return true;
+        return false;
+      });
+    }
+
+    function performRoll(cube, dc, dr, isRecall = false, callback = null) {
+      if (cube.animating || cube.dashing) return false;
+      
+      const size = getCubeSize();
+      const { origin, angle } = ROLL[rollKey(dc, dr)];
+
+      cube.animating = true;
+      cube.targetCol = cube.col + dc;
+      cube.targetRow = cube.row + dr;
+
+      const nx = cube.targetCol * size;
+      const ny = cube.targetRow * size;
+
+      // 소리 결정
+      if (isRecall) playWoodKnock();
+      else playCubeMove();
+
+      cube.el.style.transformOrigin = origin;
+      cube.el.style.transition      = `transform ${isRecall ? 0.08 : 0.24}s ease`; 
+      cube.el.style.transform       = `rotate(${angle}deg)`;
+
+      setTimeout(() => {
+        if (cube.dashing) {
+          if (callback) callback();
+          return;
+        }
+
+        cube.el.style.transition      = 'none';
+        cube.el.style.transform       = '';
+        cube.el.style.transformOrigin = '';
+        cube.col = cube.targetCol;
+        cube.row = cube.targetRow;
+        cube.el.style.left   = cube.col * size + 'px';
+        cube.el.style.bottom = cube.row * size + 'px';
+        cube.animating = false;
+
+        if (callback) callback();
+      }, isRecall ? 90 : 260);
+
+      return true;
     }
 
     function shuffle(array) {
@@ -520,6 +718,52 @@
       noise.stop(t + 0.025);
     }
 
+    function playWoodKnock() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume();
+      const t = ctx.currentTime;
+
+      // 1. 아주 짧고 드라이한 타격감 (Sine wave)
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(250, t);
+      osc.frequency.exponentialRampToValueAtTime(100, t + 0.03);
+      
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.1, t); // 볼륨 30% 추가 축소
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+      // 2. 둔탁한 질감 (Noise - 더 짧은 지속시간)
+      const bufferSize = ctx.sampleRate * 0.03;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 8); // 더 급격한 감쇄
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = 800;
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.03, t); // 볼륨 축소
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      noise.connect(lpf);
+      lpf.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.03);
+      noise.start(t);
+      noise.stop(t + 0.03);
+    }
+
     document.addEventListener('keydown', e => {
       if (e.key === ' ' || e.key === 'ArrowRight') {
         if (deck.length) sendToBack(deck[deck.length - 1]);
@@ -628,27 +872,20 @@
       }
 
       cubeState = spans.map((el, i) => {
-        let col, row;
-        if (el.classList.contains('orig')) {
-          col = startCols[i] || Math.floor(Math.random() * maxCol);
-          row = startRow;
-        } else {
-          // 이스터에그 큐브들은 랜덤 위치
-          col = Math.floor(Math.random() * (maxCol + 1));
-          row = Math.floor(Math.random() * (maxRow + 1));
-        }
+        let col = startCols[i];
+        let row = startRow;
 
         el.style.width  = size + 'px';
         el.style.height = size + 'px';
         el.style.left   = col * size + 'px';
         el.style.bottom = row * size + 'px';
         
-        // 색상 추출 (비교용)
+        // 색상 추출 및 '홈' 좌표 저장
         const color = el.style.background.replace(/\s/g, ''); 
-        const cubeObj = { col, row, el, dashing: false, color };
-        
+        COLOR_HOMES[color] = { col, row };
+
+        const cubeObj = { col, row, initialCol: col, initialRow: row, el, dashing: false, color };
         el.onclick = () => dashToWall(cubeObj);
-        
         return cubeObj;
       });
     }
@@ -792,66 +1029,7 @@
       if (!validDirs.length) return;
 
       const { dc, dr } = validDirs[Math.floor(Math.random() * validDirs.length)];
-      const { origin, angle } = ROLL[rollKey(dc, dr)];
-
-      cube.animating  = true;
-      cube.targetCol  = cube.col + dc;
-      cube.targetRow  = cube.row + dr;
-
-      const nx = cube.targetCol * size;
-      const ny = cube.targetRow * size;
-
-      playCubeMove();
-      cube.el.style.transformOrigin = origin;
-      cube.el.style.transition      = 'transform 0.24s ease';
-      cube.el.style.transform       = `rotate(${angle}deg)`;
-
-      setTimeout(() => {
-        if (cube.dashing) return; // 돌진 중이면 회전 정리 로직 건너뛰기
-
-        cube.el.style.transition      = 'none';
-        cube.el.style.transform       = '';
-        cube.el.style.transformOrigin = '';
-        cube.col = cube.targetCol;
-        cube.row = cube.targetRow;
-        cube.el.style.left   = cube.col * size + 'px';
-        cube.el.style.bottom = cube.row * size + 'px';
-        cube.animating = false;
-
-        // 착지 선 효과 — 회전 완료 직후 생성
-        const line = document.createElement('div');
-        const thick = Math.max(1, Math.round(size / 5));
-        let lx, ly, lw, lh;
-
-        if (dc !== 0) {
-          lx = nx; ly = ny; lw = size; lh = thick;
-        } else {
-          lx = nx + size - thick; ly = ny; lw = thick; lh = size;
-        }
-
-        line.style.cssText = `
-          position:fixed;
-          left:${lx}px;
-          bottom:${ly}px;
-          width:${lw}px;
-          height:${lh}px;
-          background:#000;
-          z-index:201;
-          pointer-events:none;
-          opacity:0;
-          transition:opacity 0.05s ease;
-        `;
-        document.body.appendChild(line);
-
-        requestAnimationFrame(() => {
-          line.style.opacity = '1';
-          setTimeout(() => {
-            line.style.transition = 'opacity 0.4s ease';
-            line.style.opacity = '0';
-            setTimeout(() => line.remove(), 420);
-          }, 80);
-        });
-      }, 260);
+      performRoll(cube, dc, dr);
     }
 
     // ── Loading 완료 체크 ─────────────────────────────────────
@@ -896,7 +1074,7 @@
 
     window.addEventListener('load', () => {
       setTimeout(function loop() {
-        stepCubes();
+        if (!isRecalling) stepCubes();
         const delay = (Math.random() * 1050) / (isEasterEggActive ? 4 : 1);
         setTimeout(loop, delay);
       }, 2000);
