@@ -1225,11 +1225,19 @@
     const footerCredit = document.getElementById('footer-credit');
     let footerVisible = false;
     let footerTimer = null;
+    let mobileShowCount = 0;
 
     function showFooter() {
+      const isMobile = window.innerWidth <= 600;
+
       if (!footerVisible) {
+        if (isMobile && mobileShowCount >= 3) return;
+        
         footerVisible = true;
         footerCredit.classList.add('visible');
+        if (isMobile) {
+          mobileShowCount++;
+        }
       }
       // 스크롤을 멈추면 2.5초 후 자동으로 숨김
       clearTimeout(footerTimer);
