@@ -311,6 +311,28 @@
         // 각 스텝의 간격 계산 (최소 50ms)
         const stepDelay = Math.max(50, Math.floor(duration / dist));
         
+        let retryCount = 0;
+        let totalSteps = 0;
+        // 최대 이동 허용 횟수 (화면 너비+높이의 3배면 충분)
+        const maxSteps = (Math.floor(window.innerWidth / getCubeSize()) + 
+                          Math.floor(window.innerHeight / getCubeSize())) * 3;
+        const MAX_RETRY = 8;
+
+        function forceSnap() {
+          // 강제 귀환: 부드럽게 투명도 유지하며 위치 스냅
+          cube.el.style.transition = 'none';
+          cube.el.style.transform = '';
+          cube.el.style.transformOrigin = '';
+          cube.animating = false;
+          const size = getCubeSize();
+          cube.col = targetCol;
+          cube.row = targetRow;
+          cube.el.style.left   = targetCol * size + 'px';
+          cube.el.style.bottom = targetRow * size + 'px';
+          finishedCount++;
+          if (finishedCount === total) isRecalling = false;
+        }
+
         function nextStep() {
           if (cube.dashing || (cube.col === targetCol && cube.row === targetRow)) {
             finishedCount++;
@@ -318,23 +340,64 @@
             return;
           }
 
-          let dc = 0, dr = 0;
-          if (cube.col !== targetCol) {
-            dc = cube.col < targetCol ? 1 : -1;
-          } else if (cube.row !== targetRow) {
-            dr = cube.row < targetRow ? 1 : -1;
-          }
-
-          // 충돌 확인: 목표 지점이 이미 점유되어 있으면 대기 후 다시 시도
-          if (isOccupied(cube.col + dc, cube.row + dr, cube)) {
-            setTimeout(nextStep, 20);
+          // 너무 많이 맴돌면 강제 귀환
+          if (totalSteps > maxSteps) {
+            forceSnap();
             return;
           }
 
-          // 굴리기 로직 수행 (시작 실패 시 대기 후 재시도)
-          if (!performRoll(cube, dc, dr, true, () => {
-            setTimeout(nextStep, 10); // 거의 즉시 다음 스텝
-          })) {
+          // 목표 방향 계산
+          let preferDc = 0, preferDr = 0;
+          if (cube.col !== targetCol) {
+            preferDc = cube.col < targetCol ? 1 : -1;
+          } else if (cube.row !== targetRow) {
+            preferDr = cube.row < targetRow ? 1 : -1;
+          }
+
+          const size = getCubeSize();
+
+          // 이동 방향 우선순위: [목표 방향, 집에 가까운 우회 방향, 멀어지는 우회 방향]
+          let directions = [{ dc: preferDc, dr: preferDr }];
+
+          if (retryCount >= MAX_RETRY) {
+            // 우회: 수직 방향 중 목표에 더 가까워지는 방향을 먼저 시도
+            if (preferDc !== 0) {
+              // 좌우 이동 중 막힘 → 위/아래 우회
+              const drToward = cube.row < targetRow ? 1 : (cube.row > targetRow ? -1 : 0);
+              const drAway   = -drToward || 1;
+              directions.push({ dc: 0, dr: drToward || 1 });
+              directions.push({ dc: 0, dr: drAway });
+            } else {
+              // 위아래 이동 중 막힘 → 좌/우 우회
+              const dcToward = cube.col < targetCol ? 1 : (cube.col > targetCol ? -1 : 0);
+              const dcAway   = -dcToward || 1;
+              directions.push({ dc: dcToward || 1, dr: 0 });
+              directions.push({ dc: dcAway, dr: 0 });
+            }
+            retryCount = 0;
+          }
+
+          let moved = false;
+          for (const { dc, dr } of directions) {
+            const nc = cube.col + dc;
+            const nr = cube.row + dr;
+            if (nc < 0 || nr < 0 ||
+                nc > Math.floor(window.innerWidth / size) - 1 ||
+                nr > Math.floor(window.innerHeight / size) - 1) continue;
+            if (isOccupied(nc, nr, cube)) continue;
+
+            if (performRoll(cube, dc, dr, true, () => {
+              retryCount = 0;
+              totalSteps++;
+              setTimeout(nextStep, 10);
+            })) {
+              moved = true;
+              break;
+            }
+          }
+
+          if (!moved) {
+            retryCount++;
             setTimeout(nextStep, 20);
           }
         }
@@ -653,8 +716,9 @@
     }
 
     function playTypewriter() {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      ctx.resume();
+      // 전역 Tone.context.rawContext를 공유하여 오디오 버스트 방지
+      const ctx = Tone.context.rawContext;
+      if (ctx.state !== 'running') return;
       const t = ctx.currentTime;
 
       // 짧은 고주파 노이즈
@@ -680,9 +744,11 @@
       const reverbBuf = ctx.createBuffer(2, reverbLen, ctx.sampleRate);
       for (let ch = 0; ch < 2; ch++) {
         const d = reverbBuf.getChannelData(ch);
+        const noiseData = new Float32Array(reverbLen);
         for (let i = 0; i < reverbLen; i++) {
-          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 5);
+          noiseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 5);
         }
+        d.set(noiseData);
       }
       const convolver = ctx.createConvolver();
       convolver.buffer = reverbBuf;
@@ -719,8 +785,8 @@
     }
 
     function playWoodKnock() {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      ctx.resume();
+      const ctx = Tone.context.rawContext;
+      if (ctx.state !== 'running') return;
       const t = ctx.currentTime;
 
       // 1. 아주 짧고 드라이한 타격감 (Sine wave)
@@ -1076,7 +1142,10 @@
     function runCubeLoop() {
       if (document.hidden) return;
       cubeLoopId = setTimeout(function loop() {
-        if (!isRecalling && !document.hidden) stepCubes();
+        // 사운드가 활성화(사용자 클릭 완료)된 경우에만 큐브 루프를 돌림
+        if (!isRecalling && !document.hidden && Tone.context.state === 'running') {
+          stepCubes();
+        }
         const delay = (Math.random() * 1050) / (isEasterEggActive ? 4 : 1);
         cubeLoopId = setTimeout(loop, delay);
       }, 2000);
