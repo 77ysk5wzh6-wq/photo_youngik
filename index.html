@@ -217,8 +217,17 @@
         flex-direction: row;
         gap: 4vw;
       }
-      .category-menu button { font-size: 10px; }
-      .category-menu button.active { padding-left: 0; }
+      .category-menu button { 
+        font-size: 10px; 
+        position: relative;
+        top: 0;
+        transition: color 0.05s, top 0.05s ease;
+      }
+      .category-menu button.active { 
+        padding-left: 0; 
+        font-weight: 700;
+        top: 0.5em;
+      }
       
       #footer-credit {
         background: rgb(241,165,250);
