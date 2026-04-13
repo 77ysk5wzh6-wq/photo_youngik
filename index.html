@@ -1194,8 +1194,9 @@
       pianoSampler.volume.value = -20;
     }
 
-    function playCubeMove() {
+    async function playCubeMove() {
       if (!pianoReady) return;
+      await Tone.start();
       const note = PIANO_NOTES[Math.floor(Math.random() * PIANO_NOTES.length)];
       // attack만 트리거 — release 자연스럽게 울리도록 (겹침 허용)
       pianoSampler.triggerAttack(note);
