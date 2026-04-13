@@ -884,7 +884,7 @@
       hpf.frequency.value = 4000;
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
 
       // 리버브 — 짧은 임펄스 컨볼버
@@ -944,7 +944,7 @@
       osc.frequency.exponentialRampToValueAtTime(100, t + 0.03);
       
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.1, t); // 볼륨 30% 추가 축소
+      gain.gain.setValueAtTime(0.12, t); // 볼륨 30% 추가 축소
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
 
       // 2. 둔탁한 질감 (Noise - 더 짧은 지속시간)
