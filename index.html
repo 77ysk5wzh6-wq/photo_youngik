@@ -303,9 +303,29 @@
       
       shuffle(IMAGES);
       
-      // daily_dump일 때만 15번 고정 (기존 로직 유지)
+      // daily_dump일 때 15번 고정
       if (projectId === 'daily_dump') {
         const frontPhoto = 'assets_web/daily_dump_15.jpg';
+        const frontIdx = IMAGES.indexOf(frontPhoto);
+        if (frontIdx > -1) {
+          IMAGES.splice(frontIdx, 1);
+          IMAGES.push(frontPhoto);
+        }
+      }
+
+      // cage3000일 때 03번 고정
+      if (projectId === 'cage3000') {
+        const frontPhoto = 'asset_cage3000/cage3000_03.jpg';
+        const frontIdx = IMAGES.indexOf(frontPhoto);
+        if (frontIdx > -1) {
+          IMAGES.splice(frontIdx, 1);
+          IMAGES.push(frontPhoto);
+        }
+      }
+
+      // lyjel일 때 01번 고정
+      if (projectId === 'lyjel') {
+        const frontPhoto = 'asset_lyjel/lyjel_01.jpg';
         const frontIdx = IMAGES.indexOf(frontPhoto);
         if (frontIdx > -1) {
           IMAGES.splice(frontIdx, 1);
